@@ -1,0 +1,131 @@
+version: "3.7"
+services:
+  # Outpost app
+
+  outpost:
+    env_file: .env.outpost
+    image: "outpost:development"
+    container_name: greenwich-outpost
+    init: true
+    depends_on:
+      - postgres
+    build:
+      context: ${OUTPOST_CODE_PATH}
+      # dockerfile: ./Dockerfile
+      target: development
+    ports:
+      - ${OUTPOST_PORT}:3000
+    volumes:
+      - ${OUTPOST_CODE_PATH}:/app:cached
+    environment:
+      PROJECT_NAME: ${PROJECT_NAME}
+      PUMA_WORKERS: 0
+      RAILS_MAX_THREADS: 1
+    networks:
+      - greenwich_external_network
+      - greenwich_internal_network
+
+  # Outpost API
+
+  outpost-api:
+    env_file: .env.outpost-api
+    image: "outpost-api:development"
+    container_name: greenwich-outpost-api
+    # command: "npm run dev"
+    depends_on:
+      - mongo
+    build:
+      context: ${OUTPOST_API_CODE_PATH}
+      target: development
+    ports:
+      - ${OUTPOST_API_PORT}:3001
+    volumes:
+      - ${OUTPOST_API_CODE_PATH}:/app:cached
+    environment:
+      NODE_ENV: development
+    networks:
+      - greenwich_external_network
+      - greenwich_internal_network
+
+  # Scout
+
+  scout:
+    env_file: .env.scout
+    image: "scout:development"
+    container_name: greenwich-scout
+    stdin_open: true
+    build:
+      context: ${SCOUT_CODE_PATH}
+      target: development
+    ports:
+      - ${SCOUT_PORT}:3000
+    volumes:
+      - ${SCOUT_CODE_PATH}:/app:cached
+    environment:
+      NODE_ENV: development
+      REACT_APP_API_HOST: http://localhost:${OUTPOST_API_PORT}/api/v1
+      REACT_APP_FILTERS_DATASOURCE: http://localhost:${OUTPOST_PORT}/api/v1
+    networks:
+      - greenwich_external_network
+      - greenwich_internal_network
+
+  # Server
+
+  # nginx:
+  #   image: "outpost-nginx:development"
+  #   container_name: svr-nginx
+  #   build:
+  #     context: ./
+  #     dockerfile: ./environment/containers/nginx/Dockerfile
+  #     target: development
+  #   depends_on:
+  #     - outpost
+  #   tty: true
+  #   ports:
+  #     - 80 #ephemeral port vs 80:80
+  #   volumes:
+  #     - ./environment/artifacts/nginx/:/var/log/nginx:cached
+  #   networks:
+  #     - greenwich_external_network
+
+  # Databases
+
+  postgres:
+    image: postgres:13.7-alpine
+    container_name: greenwich-db-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_DB_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_DB_PASSWORD}
+    # build:
+    #   context: ./
+    #   dockerfile: ./environment/containers/postgres/Dockerfile
+    ports:
+      - 5432:5432
+    volumes:
+      - greenwich-postgres-volume:/var/lib/postgresql/data
+    networks:
+      - greenwich_internal_network
+
+  mongo:
+    image: mongo:6
+    container_name: greenwich-db-mongo
+    # build:
+    #   context: ./../outpost-api-service/
+    #   dockerfile: ./../outpost-api-service/environment/containers/mongo/Dockerfile
+    #   target: development
+    ports:
+      - 27017:27017
+    volumes:
+      - greenwich-mongo-volume:/data/db
+    networks:
+      - greenwich_internal_network
+      - greenwich_external_network
+
+volumes:
+  greenwich-postgres-volume:
+  greenwich-mongo-volume:
+
+networks:
+  greenwich_external_network:
+  greenwich_internal_network:
+    internal: true
