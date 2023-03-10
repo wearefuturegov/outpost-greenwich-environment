@@ -36,6 +36,7 @@ docker compose -f docker-compose.development.yml exec outpost rails db:migrate
 
 # seed the db if needed (IMPORT_SAMPLE_DATA will add dummy data) admin user is always created
 docker compose -f docker-compose.development.yml exec -e IMPORT_SAMPLE_DATA=true outpost rails db:seed
+docker compose -f docker-compose.development.yml exec outpost rails db:seed
 
 # push data from outpost db to outpost-api db
 docker compose -f docker-compose.development.yml exec outpost rake build_public_index
@@ -68,4 +69,21 @@ docker-compose -f docker-compose.development.yml exec scout /bin/ash;
 
 ```sh
 docker-compose -f docker-compose.development.yml stop
+```
+
+# Reset DB
+
+In case of emergency!
+
+```sh
+docker compose -f docker-compose.development.yml exec outpost rails db:reset db:migrate
+```
+
+# Importing data
+
+```sh
+docker compose -f docker-compose.development.yml exec outpost rake convert:openobjects
+docker compose -f docker-compose.development.yml exec -e IMPORT_HIERARCHICAL_TAXONOMIES=true outpost rake import:services
+docker compose -f docker-compose.development.yml exec outpost rake import:custom_fields
+docker compose -f docker-compose.development.yml exec outpost rake import:services
 ```
